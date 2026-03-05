@@ -169,4 +169,4 @@ Si vas a usarla en produccion, agrega como siguiente paso:
 - reconciliacion de estado de pago en base de datos,
 - idempotencia por `payment_id` / `notification_id`.
 
-<p align="center">Made by Profe Mercho with lots of ☕ and ♥</p>
+<p align="center">Made by Profe Mercho with lots of ☕ and 💖</p>

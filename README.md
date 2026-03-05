@@ -23,11 +23,12 @@ Fecha de verificacion de enlaces: **2026-03-04**.
 
 ## 2. Flujo funcional (resumen)
 
-1. Frontend solicita al backend crear una preferencia (`POST /pago/preferencia`).
-2. Backend usa `MP_ACCESS_TOKEN` para llamar a Mercado Pago y crear la preferencia.
-3. Backend devuelve `preferenciaId`.
-4. Frontend inicializa SDK con `VITE_MP_PUBLIC_KEY` y renderiza `<Wallet />` con ese `preferenciaId`.
-5. Usuario hace clic y Mercado Pago continua el checkout.
+1. Frontend consulta productos al backend (`GET /productos`).
+2. Usuario elige comprar y frontend solicita preferencia (`POST /pago/preferencia`) enviando `productId`.
+3. Backend valida el producto en servidor y usa `MP_ACCESS_TOKEN` para crear la preferencia.
+4. Backend devuelve `preferenciaId`.
+5. Frontend inicializa SDK con `VITE_MP_PUBLIC_KEY` y renderiza `<Wallet />` con ese `preferenciaId`.
+6. Usuario hace clic y Mercado Pago continua el checkout.
 
 ## 3. Variables de entorno
 
@@ -47,14 +48,15 @@ VITE_API_URL=http://localhost:3000
 
 ## 4. Backend: como funciona
 
-Archivo principal: `api/index.js`.
+Archivos principales: `api/index.js` y `api/db/productos.js`.
 
 Puntos clave:
 
 - Carga variables con `dotenv`.
 - Crea cliente MP con `MercadoPagoConfig`.
+- Expone `GET /productos`.
 - Expone `POST /pago/preferencia`.
-- Define el item y monto **en servidor** (no confiar montos enviados por cliente).
+- Recibe `productId`, busca el producto en `db/productos.js` y define item/monto **en servidor**.
 - Retorna solo lo necesario para frontend (`preferenciaId`).
 
 Ejemplo de respuesta:
@@ -73,7 +75,8 @@ Componente principal: `client/src/AplicacionPago.jsx`.
 Puntos clave:
 
 - Inicializa SDK con `initMercadoPago(VITE_MP_PUBLIC_KEY)`.
-- Hace `fetch` a `POST ${VITE_API_URL}/pago/preferencia`.
+- Hace `fetch` a `GET ${VITE_API_URL}/productos`.
+- Hace `fetch` a `POST ${VITE_API_URL}/pago/preferencia` enviando `{ productId }`.
 - Guarda el `preferenciaId` en estado.
 - Renderiza:
 
@@ -109,7 +112,9 @@ npm run dev
 Tip rapido para validar backend:
 
 ```bash
-curl -X POST http://localhost:3000/pago/preferencia
+curl -X POST http://localhost:3000/pago/preferencia \
+  -H "Content-Type: application/json" \
+  -d "{\"productId\":1}"
 ```
 
 ## 8. Errores comunes y solucion
@@ -163,3 +168,5 @@ Si vas a usarla en produccion, agrega como siguiente paso:
 - validacion de firma,
 - reconciliacion de estado de pago en base de datos,
 - idempotencia por `payment_id` / `notification_id`.
+
+<p align="center">Made by Profe Mercho with lots of ☕ and ♥</p>

@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import { MercadoPagoConfig, Preference } from "mercadopago";
+import productos from "./db/productos.js";
 
 dotenv.config();
 
@@ -18,12 +19,27 @@ app.get("/salud", (_req, res) => {
   res.json({ ok: true, mensaje: "Servidor activo" });
 });
 
-// Crea una preferencia simple para probar Mercado Pago.
-app.post("/pago/preferencia", async (_req, res) => {
+// Devuelve productos basicos para el frontend.
+app.get("/productos", (_req, res) => {
+  res.json({ ok: true, productos });
+});
+
+// Crea una preferencia simple a partir de un producto del servidor.
+app.post("/pago/preferencia", async (req, res) => {
   if (!clienteMP) {
     return res.status(500).json({
       ok: false,
       error: "Falta MP_ACCESS_TOKEN en api/.env",
+    });
+  }
+
+  const productId = Number(req.body?.productId);
+  const producto = productos.find((item) => item.id === productId);
+
+  if (!producto) {
+    return res.status(404).json({
+      ok: false,
+      error: "Producto no encontrado",
     });
   }
 
@@ -33,13 +49,13 @@ app.post("/pago/preferencia", async (_req, res) => {
       body: {
         items: [
           {
-            title: "Producto de prueba",
+            title: producto.title,
             quantity: 1,
-            unit_price: 2000,
+            unit_price: producto.price,
             currency_id: "ARS",
           },
         ],
-        external_reference: `demo_${Date.now()}`,
+        external_reference: `producto_${producto.id}_${Date.now()}`,
       },
     });
 

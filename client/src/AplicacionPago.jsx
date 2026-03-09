@@ -42,7 +42,7 @@ function AplicacionPago() {
 
   const crearPreferencia = async () => {
     if (!clavePublica) {
-      setError("Falta VITE_MP_PUBLIC_KEY en MP-Test/.env");
+      setError("Falta VITE_MP_PUBLIC_KEY en client/.env");
       return;
     }
 

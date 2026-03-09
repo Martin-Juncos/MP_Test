@@ -1,3 +1,5 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -6,10 +8,43 @@ import productos from "./db/productos.js";
 
 dotenv.config();
 
+const currentFilePath = fileURLToPath(import.meta.url);
+const isDirectRun = process.argv[1]
+  ? path.resolve(process.argv[1]) === currentFilePath
+  : false;
+
 const app = express();
 const puerto = Number(process.env.PORT) || 3000;
 const tokenMP = process.env.MP_ACCESS_TOKEN;
 const clienteMP = tokenMP ? new MercadoPagoConfig({ accessToken: tokenMP }) : null;
+
+function obtenerDiagnosticoMercadoPago(error) {
+  const rawMessage = typeof error?.message === "string" ? error.message : "";
+  const normalizedMessage = rawMessage.toLowerCase();
+
+  if (normalizedMessage.includes("invalid access token")) {
+    return {
+      status: 500,
+      publicMessage: "Credenciales de Mercado Pago invalidas o vencidas",
+      logMessage: rawMessage,
+    };
+  }
+
+  const causeSummary = Array.isArray(error?.cause)
+    ? error.cause
+        .map((cause) =>
+          [cause?.code, cause?.description].filter(Boolean).join(": "),
+        )
+        .filter(Boolean)
+        .join(" | ")
+    : "";
+
+  return {
+    status: 502,
+    publicMessage: "Mercado Pago rechazo la creacion de la preferencia",
+    logMessage: causeSummary || rawMessage || "Error desconocido",
+  };
+}
 
 app.use(cors());
 app.use(express.json());
@@ -63,14 +98,24 @@ app.post("/pago/preferencia", async (req, res) => {
       ok: true,
       preferenciaId: respuesta.id,
     });
-  } catch {
-    return res.status(500).json({
+  } catch (error) {
+    const diagnostico = obtenerDiagnosticoMercadoPago(error);
+
+    console.error(
+      `[mercadopago] Error al crear preferencia: ${diagnostico.logMessage}`,
+    );
+
+    return res.status(diagnostico.status).json({
       ok: false,
-      error: "No se pudo crear la preferencia",
+      error: diagnostico.publicMessage,
     });
   }
 });
 
-app.listen(puerto, () => {
-  console.log(`Servidor API en http://localhost:${puerto}`);
-});
+if (isDirectRun) {
+  app.listen(puerto, () => {
+    console.log(`Servidor API en http://localhost:${puerto}`);
+  });
+}
+
+export { app };
